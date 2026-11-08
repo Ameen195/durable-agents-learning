@@ -1,5 +1,6 @@
-﻿.venv/
+.venv/
 .env
 *.db
 *.sqlite
 __pycache__/
+day3_outbox_*.txt
