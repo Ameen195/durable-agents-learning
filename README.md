@@ -50,3 +50,21 @@ Notes:
 
 - To run the SQLite demo again from scratch, delete `checkpoints.sqlite` or change the `thread_id`. A finished thread has nothing left to resume.
 - On resume, LangGraph re-runs the node that was interrupted (here `think`) from its start, not from the middle. Anything with a side effect inside that node can run twice. That is the problem Day 3 addresses.
+
+## Day 3: Tools that run twice
+
+`day3_demo.py` is a 3-node graph (`prepare -> send_email -> send_email -> report`) where `send_email` has a side effect. With `CRASH=1` it dies right after sending, before the checkpoint is saved.
+
+```powershell
+$env:CRASH = "1"
+python day3_demo.py naive run
+Remove-Item Env:CRASH
+python day3_demo.py naive resume   # EMAILS IN OUTBOX: 2  (the bug)
+
+$env:CRASH = "1"
+python day3_demo.py safe run
+Remove-Item Env:CRASH
+python day3_demo.py safe resume    # EMAILS IN OUTBOX: 1  (the fix)
+```
+
+Checkpoints give at-least-once execution: an interrupted step re-runs from its start. The fix is an idempotency key (`<thread_id>:send_email`) that the receiver uses to ignore repeats, which gives an exactly-once effect.
