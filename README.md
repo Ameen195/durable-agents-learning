@@ -53,7 +53,7 @@ Notes:
 
 ## Day 3: Tools that run twice
 
-`day3_demo.py` is a 3-node graph (`prepare -> send_email -> send_email -> report`) where `send_email` has a side effect. With `CRASH=1` it dies right after sending, before the checkpoint is saved.
+`day3_demo.py` is a 3-node graph (`prepare -> send_email -> report`) where `send_email` has a side effect. With `CRASH=1` it dies right after sending, before the checkpoint is saved.
 
 ```powershell
 $env:CRASH = "1"
