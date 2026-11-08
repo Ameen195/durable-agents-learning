@@ -23,3 +23,30 @@ python hello_graph.py
 ### Next
 
 `InMemorySaver` is lost when the process exits. Next step is a persistent checkpointer (e.g. SQLite) so a run can resume after a crash.
+
+## Day 2: Persistent vs durable
+
+`durable_demo.py` is a 3-node graph (`fetch -> think -> report`). `think` stops the program when the environment variable `CRASH` is `1`.
+
+Run these in PowerShell from the project folder (venv activated):
+
+```powershell
+# 1. In-memory: crash, then try to resume
+$env:CRASH = "1"
+python durable_demo.py memory run      # dies at think
+Remove-Item Env:CRASH                  # clear the flag, or resume will crash again
+python durable_demo.py memory resume   # "NOTHING (state lost)"
+
+# 2. SQLite: crash, then resume
+$env:CRASH = "1"
+python durable_demo.py sqlite run      # dies at think
+Remove-Item Env:CRASH
+python durable_demo.py sqlite resume   # resumes at think, fetch is NOT re-run
+```
+
+The only change between the two runs is one line: `InMemorySaver()` -> `SqliteSaver(sqlite3.connect(DB_PATH))`. Checkpoints go to `checkpoints.sqlite` on D:. Resuming uses `graph.invoke(None, config)` with the same `thread_id`.
+
+Notes:
+
+- To run the SQLite demo again from scratch, delete `checkpoints.sqlite` or change the `thread_id`. A finished thread has nothing left to resume.
+- On resume, LangGraph re-runs the node that was interrupted (here `think`) from its start, not from the middle. Anything with a side effect inside that node can run twice. That is the problem Day 3 addresses.
