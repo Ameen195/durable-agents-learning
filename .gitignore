@@ -3,4 +3,4 @@
 *.db
 *.sqlite
 __pycache__/
-day3_outbox_*.txt
+day*_outbox*.txt

@@ -50,3 +50,37 @@ Notes:
 
 - To run the SQLite demo again from scratch, delete `checkpoints.sqlite` or change the `thread_id`. A finished thread has nothing left to resume.
 - On resume, LangGraph re-runs the node that was interrupted (here `think`) from its start, not from the middle. Anything with a side effect inside that node can run twice. That is the problem Day 3 addresses.
+
+## Day 3: Tools that run twice
+
+`day3_demo.py` is a 3-node graph (`prepare -> send_email -> report`) where `send_email` has a side effect. With `CRASH=1` it dies right after sending, before the checkpoint is saved.
+
+```powershell
+$env:CRASH = "1"
+python day3_demo.py naive run
+Remove-Item Env:CRASH
+python day3_demo.py naive resume   # EMAILS IN OUTBOX: 2  (the bug)
+
+$env:CRASH = "1"
+python day3_demo.py safe run
+Remove-Item Env:CRASH
+python day3_demo.py safe resume    # EMAILS IN OUTBOX: 1  (the fix)
+```
+
+Checkpoints give at-least-once execution: an interrupted step re-runs from its start. The fix is an idempotency key (`<thread_id>:send_email`) that the receiver uses to ignore repeats, which gives an exactly-once effect.
+
+## Day 4: Human approval with interrupt and resume
+
+`day4_demo.py` is a 3-node graph (`draft -> approval -> execute`). The `approval` node calls `interrupt()`, which saves the run to SQLite and stops the program. A later, separate program run resumes it with `Command(resume=...)`.
+
+```powershell
+python day4_demo.py start     # pauses, program exits
+python day4_demo.py status    # shows it is waiting for a human
+python day4_demo.py approve   # new program run: resumes and executes the action
+python day4_demo.py approve   # "Nothing is waiting for approval"
+```
+
+- The human can answer from a different program run (or days later) because the pause lives in the SQLite checkpoint, found again by the same `thread_id`.
+- On resume the `approval` node runs again from its top, so code before `interrupt()` must be free of side effects.
+- The `execute` step reuses the Day 3 idempotency key, so the action happens once.
+- Run `$env:THREAD = "approval-2"` first to start an independent job, for example to test the reject path.
