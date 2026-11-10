@@ -1,6 +1,26 @@
 # durable-agents-learning
 
-Learning journal for building durable AI agents with [LangGraph](https://langchain-ai.github.io/langgraph/).
+Six small, tested demos of how to make AI agents durable: they survive crashes, never repeat an action, wait for human approval, and leave an audit trail. Built in Python with [LangGraph](https://langchain-ai.github.io/langgraph/), SQLite and [DBOS](https://docs.dbos.dev/).
+
+The key idea: checkpoints give you at-least-once execution, and idempotency keys turn that into an exactly-once effect.
+
+| Day | File | What it shows |
+| --- | --- | --- |
+| 1 | `hello_graph.py` | Checkpoints: state is saved after every step |
+| 2 | `durable_demo.py` | Persistent vs durable: crash and resume with SQLite |
+| 3 | `day3_demo.py` | A tool that runs twice, fixed with an idempotency key |
+| 4 | `day4_demo.py` | Human approval with `interrupt()` and resume |
+| 5 | `day5_demo.py` | An audit trail read from the checkpoint history |
+| 5b | `day5b_postgres.py` | The same agent on PostgreSQL (tested against PostgreSQL 16) |
+| 6 | `day6_dbos_demo.py` | The same ideas with the DBOS durable-execution library |
+
+Quick start (PowerShell):
+
+```powershell
+pip install -r requirements.txt
+pip install dbos
+python dry_run.py    # runs the demos from scratch and checks every result
+```
 
 ## Day 1: Checkpoint basics
 
