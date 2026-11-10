@@ -102,3 +102,58 @@ python day5_demo.py raw       # the raw rows in the SQLite checkpoints table
 - The human's answer is `{"decision": ..., "by": ...}`, so the trail records **who** approved, not just that someone did.
 - Each row in the `checkpoints` table points to its parent, so the history is a chain you can replay or inspect later.
 - Run `$env:THREAD = "other-name"` to audit a different run.
+
+## Day 5b: Same audit trail, stored in PostgreSQL
+
+`day5b_postgres.py` is the Day 5 agent with one real change: the checkpoints go to a PostgreSQL server instead of a SQLite file. The graph, `interrupt()` and `Command(resume=...)` are unchanged.
+
+```powershell
+pip install langgraph-checkpoint-postgres "psycopg[binary,pool]"
+docker run --name pg-agent -e POSTGRES_PASSWORD=dev -p 5432:5432 -d postgres:16
+
+python day5b_postgres.py start     # pauses for approval
+python day5b_postgres.py audit     # timeline, read from PostgreSQL
+python day5b_postgres.py approve   # separate run: resume and finish
+python day5b_postgres.py audit     # full timeline
+python day5b_postgres.py tables    # the tables LangGraph created
+python day5b_postgres.py raw       # raw rows in the checkpoints table
+```
+
+- `PostgresSaver.from_conn_string(DSN)` replaces `SqliteSaver(...)`, and `saver.setup()` creates the tables on first use.
+- LangGraph creates four tables: `checkpoints`, `checkpoint_blobs`, `checkpoint_writes` and `checkpoint_migrations`.
+- The connection string comes from `DATABASE_URL` and defaults to the Docker command above. The password `dev` is for local practice only. Never commit real credentials.
+- Postgres is a separate server, so several programs or machines can share one history, and it can be backed up and secured like any database.
+- Stop and restart the container with `docker stop pg-agent` and `docker start pg-agent`. The data stays in the container until you remove it.
+
+## Day 6: A durable-execution engine (DBOS), no Docker
+
+`day6_dbos_demo.py` repeats the crash and approval ideas with [DBOS](https://docs.dbos.dev/), a library that makes ordinary Python functions durable. You mark units of work with `@DBOS.step()` and the function that calls them with `@DBOS.workflow()`. DBOS records each finished step in SQLite and resumes unfinished workflows when the program starts again.
+
+```powershell
+pip install dbos
+
+# Part 1: crash and automatic recovery
+$env:CRASH = "1"
+python day6_dbos_demo.py crash-run   # dies inside step 3
+Remove-Item Env:CRASH
+python day6_dbos_demo.py resume      # steps 1 and 2 are NOT re-run
+
+# Part 2: human approval that survives a restart
+python day6_dbos_demo.py start       # draft, then waits; program exits
+python day6_dbos_demo.py status      # saved workflow and its recorded steps
+python day6_dbos_demo.py approve     # new run: recovers, approves, finishes
+python day6_dbos_demo.py approve     # "Nothing is waiting"
+```
+
+LangGraph and DBOS compared:
+
+| | LangGraph (Days 1-5) | DBOS (Day 6) |
+|---|---|---|
+| You write | A graph of nodes and edges | Plain Python functions with decorators |
+| Saved at | Each finished node (checkpoint) | Each finished step |
+| Pause for a human | `interrupt()` and `Command(resume=...)` | `DBOS.recv()` and `DBOS.send()` |
+| Resume | Same `thread_id`, `invoke(None, ...)` | Automatic on program start, by workflow ID |
+
+- The `workflow` function body runs again on recovery, but finished `step` results are replayed from the record, so steps are not repeated.
+- Steps are still at-least-once. A step interrupted mid-way re-runs, so side effects keep the Day 3 idempotency key.
+- The same rule from Day 4 applies: do not put side effects in the workflow body outside a step.
