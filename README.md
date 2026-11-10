@@ -157,3 +157,15 @@ LangGraph and DBOS compared:
 - The `workflow` function body runs again on recovery, but finished `step` results are replayed from the record, so steps are not repeated.
 - Steps are still at-least-once. A step interrupted mid-way re-runs, so side effects keep the Day 3 idempotency key.
 - The same rule from Day 4 applies: do not put side effects in the workflow body outside a step.
+
+## Verify everything: the dry run
+
+`dry_run.py` runs the Day 2 to Day 6 demos from scratch and checks each expected result (for example: the in-memory run loses its state, the safe version sends one email, an approved run executes the action once, and a DBOS crash resumes without repeating finished steps).
+
+```powershell
+python dry_run.py
+```
+
+- It copies the demo files into a temporary folder, so your own checkpoints, outbox files and Git history are never touched. The folder is deleted at the end.
+- A healthy run ends with `18 of 18 checks passed.` The Day 6 checks are skipped if `dbos` is not installed.
+- `day5b_postgres.py` is not covered because it needs a running Postgres server.
