@@ -203,3 +203,5 @@ python -m pytest test_selfeval.py  # offline tests, no API key needed
 ```
 
 Set `GROQ_MODEL` to change the model, and `SELFEVAL_DB=sqlite` to keep checkpoints on disk so a stopped run can resume.
+
+**Model note:** Groq model access differs per account and old model names get retired. Run `python selfeval_agent.py models` to list what your key can use, then set `$env:GROQ_MODEL = "<name>"`. If a model returns a 403 "blocked at the organization level" error, enable it at console.groq.com/settings/limits. This demo ran with `openai/gpt-oss-120b`.
