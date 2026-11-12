@@ -189,3 +189,17 @@ python dry_run.py
 - It copies the demo files into a temporary folder, so your own checkpoints, outbox files and Git history are never touched. The folder is deleted at the end.
 - A healthy run ends with `18 of 18 checks passed.` The Day 6 checks are skipped if `dbos` is not installed.
 - `day5b_postgres.py` is not covered because it needs a running Postgres server.
+
+## SelfEvaluate recap agent (Groq)
+
+A small tool-using LangGraph agent: it reads code, edits it only after a human approves (`interrupt`), runs the tests, and keeps going until its own check passes.
+
+```powershell
+pip install langchain-groq pytest
+$env:GROQ_API_KEY = "gsk_..."      # never commit your key
+python selfeval_agent.py reset     # restore the buggy demo files
+python selfeval_agent.py run       # approve or reject each write with y/n
+python -m pytest test_selfeval.py  # offline tests, no API key needed
+```
+
+Set `GROQ_MODEL` to change the model, and `SELFEVAL_DB=sqlite` to keep checkpoints on disk so a stopped run can resume.
